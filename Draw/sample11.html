@@ -1,0 +1,241 @@
+﻿<!DOCTYPE html>
+ 
+<html>
+<head>
+    <title>HTML5 Canvas塗鴉板</title>
+    <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.6.4.js"></script>
+    
+    <style>
+        body,input { font-size: 9pt; }
+        #dCanvas,#dLine { clear: both; }
+        .option
+        {
+            float: left; width: 7%; height: 50px; border: 2px solid #cccccc;
+            margin-right: 4px; margin-bottom: 4px;
+        }
+        .active { border: 2px solid black; }
+        .lw { text-align: center; vertical-align: middle; }
+        img.output { border: 1px solid green; }
+        #cSketchPad { cursor: arrow; }
+        .P1{
+            position:absolute;
+            top:0px;
+            left:0px;
+            z-index:-1;
+        }
+        .P2{
+            position:absolute;
+            top:66px;
+            left:10px;
+            z-index:-1;
+        }
+        .P3{
+            z-index:1;
+        }
+		#scream2{
+		    position:absolute;
+            top:125px;
+            left:10px;
+            z-index:-1;
+		}
+    </style>
+
+</head>
+<body><!--style="background-color:#000;"-->
+<div id="dPallete"></div>
+<div id="dLine"></div>
+
+<div id="dCanvas">
+    <canvas id="cSketchPad" width="300" height="300" style="border: 2px solid gray" />
+</div>
+
+<input type="button" id="OkButton" value="OK" />
+<div id="dOutput"></div>
+
+<div>
+    <img id="scream2"  src="1.jpg" width="90%" height="100%" alt="The Scream">
+    <img id="scream" src="1.jpg"style="display:none">
+</div>
+<!--script-->
+<script>
+		//畫框大小
+		var w =  window.innerWidth*0.8;
+        var h =  window.innerWidth*1.6; 
+        $(function () {
+            //產生不同顏色的div方格當作調色盤選項
+            var colors =
+            "red;orange;yellow;green;blue;indigo;purple;black;white".split(';');
+            var sb = [];
+            $.each(colors, function (i, v) {
+                sb.push("<div class='option' style='background-color:" + v + "'></div>");
+            });
+            $("#dPallete").html(sb.join("\n"));
+            //產生不同尺寸的方格當作線條粗細選項
+            sb = [];
+            for (var i = 1; i <= 9; i++)
+                sb.push("<div class='option lw'>" +
+         "<div style='margin-top:#px;margin-left:#px;width:%px;height:%px'></div></div>"
+                .replace(/%/g, i).replace(/#/g, 10 - i / 2));
+            $("#dLine").html(sb.join('\n'));
+            var $clrs = $("#dPallete .option");
+            var $lws = $("#dLine .option");
+            //點選調色盤時切換焦點並取得顏色存入p_color，
+            //同時變更線條粗細選項的方格的顏色
+            $clrs.click(function () {
+                $clrs.removeClass("active");
+                $(this).addClass("active");
+                p_color = this.style.backgroundColor;
+                $lws.children("div").css("background-color", p_color);
+            }).first().click();
+            //點選線條粗細選項時切換焦點並取得寬度存入p_width
+            $lws.click(function () {
+                $lws.removeClass("active");
+                $(this).addClass("active");
+                p_width =
+                    $(this).children("div").css("width").replace("px", "");
+ 
+            }).eq(3).click();
+			/*
+			document.body.addEventListener('touchmove', function (e) {
+				e.preventDefault();
+			}, false);
+			*/
+            //取得canvas context
+            var $canvas1 = document.getElementById("cSketchPad");
+            var $canvas = $("#cSketchPad");
+            var ctx = $canvas[0].getContext("2d");
+            ctx.lineCap = "round";
+            ctx.fillStyle = "rgba(0,0,0,0)"; //整個canvas塗上白色背景避免PNG的透明底色效果
+            ctx.fillRect(0, 0, $canvas.width(), $canvas.height());
+            var drawMode = false;
+            //canvas點選、移動、放開按鍵事件時進行繪圖動作
+			
+            $canvas1.addEventListener("mousedown", function (e) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = p_color;
+                    ctx.lineWidth = p_width;
+                    ctx.moveTo(e.pageX - $canvas.position().left, e.pageY - $canvas.position().top);
+                    drawMode = true;
+            }, false);
+            $canvas1.addEventListener("mousemove", function (e) {
+               if (drawMode) {
+                    ctx.lineTo(e.pageX - $canvas.position().left, e.pageY - $canvas.position().top);
+                    ctx.stroke();
+                }
+            }, false);
+            $canvas1.addEventListener("mouseup", function (e) {
+                    drawMode = false;
+            }, false);
+			
+			
+			var LockView = function (e) { 
+				//鎖定螢幕
+　　　			e.preventDefault(); 
+			}
+			
+			
+	        $canvas1.addEventListener('touchstart', function(e) {
+					//鎖定螢幕
+					document.addEventListener('touchstart',LockView,false);
+                    
+					ctx.strokeStyle = p_color;
+                    ctx.lineWidth = p_width;
+					pp = [-1,-1];
+            }, false);
+            $canvas1.addEventListener("touchmove", function (e) {
+                var touches = e.touches;
+				//修正觸控偏移
+				var ad_x = 30;
+				var ad_y = 100;
+				//如果是剛下筆(手)，會先初始化起始點
+				if( pp[0] == -1 && pp[1] == -1 ){ 
+					pp = [touches[0].clientX-ad_x,touches[0].clientY-ad_y]; 
+				}
+				//紀錄下一點的位置
+				np = [touches[0].clientX-ad_x,touches[0].clientY-ad_y];
+				
+				//繪圖
+				ctx.beginPath();
+				ctx.moveTo(pp[0], pp[1]);
+				ctx.lineTo(np[0],np[1]);
+				ctx.closePath();
+				ctx.stroke();
+				//下一點的位置=新的起始點
+				pp[0] = np[0];
+				pp[1] = np[1];
+			}, false);
+			$canvas1.addEventListener("touchend", function (e) {
+				//起始點歸零
+				pp = [-1,-1];
+				// 解除螢幕鎖定
+				document.removeEventListener('touchstart',LockView,false);
+			}, false);
+			
+			 });
+    </script>
+    <script>
+    function DisWhite() {
+        var c=document.getElementById("cSketchPad");
+        var ctx=c.getContext("2d");
+        
+        var imgData=ctx.getImageData(0,0,c.width,c.height);
+        // 反转颜色
+        for (var i=0;i<imgData.data.length;i+=4)
+          {
+            imgData.data[i]=imgData.data[i];
+            imgData.data[i+1]=imgData.data[i+1];
+            imgData.data[i+2]=imgData.data[i+2];
+            if(imgData.data[i]>=220 & imgData.data[i+1]>=220 &imgData.data[i+3]>=220)
+            {
+                imgData.data[i+3]=0;
+            }
+          }
+        ctx.putImageData(imgData,0,0);
+        
+    }
+    function SetC3(loopOn) {
+        DisWhite();
+        Out2img();
+        setTimeout(function(){
+            var c = document.getElementById("cSketchPad");
+            var ctx = c.getContext("2d");
+            var img = document.getElementById("scream");
+			ctx.drawImage(img,0,0,img.width,img.height,0,0,c.width,c.height);
+            var img = document.getElementById("OutImg");
+            ctx.drawImage(img, 0, 0);
+            Out2img();
+            ctx.clearRect(0, 0, c.width, c.height);
+            ctx.drawImage(img, 0, 0);
+        }, 50);
+        if(loopOn){            
+            setTimeout(function(){SetC3()}, 1000);
+        }
+        
+    }
+    function Out2img() {
+                $("#dOutput").html(
+                $("<img />", { src: document.getElementById("cSketchPad").toDataURL(),
+                    "class": "output","ID":"OutImg"
+                }));                
+    }
+     
+    window.onload = function() {
+        SetC3(false); 
+		
+		var canvas = document.getElementById('cSketchPad'),context = canvas.getContext('2d');		
+		canvas.width = w;
+		//canvas.height = h;
+		// resize the canvas to fill browser window dynamically
+		//window.addEventListener('resize', resizeCanvas, true);
+		var pic = document.getElementById('scream2');
+		pic.width = canvas.width;
+		pic.height = canvas.height;
+		}
+    $("#OkButton").click(function(){
+      SetC3(false);
+    });
+    
+    </script>
+<!--script end-->
+</body>
+</html>
